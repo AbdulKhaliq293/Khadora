@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "647566444598",
+    "project_id": "khadora-843b7",
+    "storage_bucket": "khadora-843b7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:647566444598:android:b29edee714d14de348b097",
+        "android_client_info": {
+          "package_name": "com.example.plant_care_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "647566444598-a8ubn9l9h3n8cbh4b64sdaefbsi2pj3h.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.plant_care_app",
+            "certificate_hash": "fcce2670b7551bbd3b13081b3f3b065e362388a2"
+          }
+        },
+        {
+          "client_id": "647566444598-5da9essg69nccmc3qkbmpchbbijsdkc8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCdKAhq9CfySah7vjGjhsfVD5I-PNTDLLM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "647566444598-5da9essg69nccmc3qkbmpchbbijsdkc8.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "647566444598-63er87qvrs0qu4rbb7er0j3c1kipiv2q.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.plantCareApp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

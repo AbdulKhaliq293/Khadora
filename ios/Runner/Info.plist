@@ -45,5 +45,11 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>We need camera access to scan and identify plants.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>We need microphone access for video recording.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>We need photo library access to choose plant images.</string>
 </dict>
 </plist>

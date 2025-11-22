@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart'; // Import Riverpod
 import 'package:plant_care_app/core/theme/colors.dart'; // Import colors
 import 'package:plant_care_app/core/theme/theme_provider.dart'; // Import ThemeProvider
+import 'package:plant_care_app/features/auth/data/repositories/auth_repository.dart';
+import 'package:plant_care_app/features/auth/presentation/screens/login_screen.dart';
 import 'package:plant_care_app/features/plant_collection/domain/entities/plant_model.dart';
 import 'package:plant_care_app/features/plant_collection/presentation/screens/plant_collection_detail_screen.dart';
 import 'package:plant_care_app/features/plant_identification/presentation/screens/add_plant_screen.dart'; // Import AddPlantScreen
@@ -21,6 +23,73 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   // Placeholder for plant data - will be replaced with actual data later
   // Using network image URLs now as per user feedback.
+  void _showProfileModal() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        final user = ref.watch(authRepositoryProvider).currentUser;
+        final isDarkMode = ref.watch(themeProvider) == ThemeMode.dark;
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // User Info
+              ListTile(
+                leading: CircleAvatar(
+                  backgroundImage: user?.photoURL != null
+                      ? NetworkImage(user!.photoURL!)
+                      : null,
+                  child: user?.photoURL == null ? const Icon(Icons.person) : null,
+                ),
+                title: Text(user?.displayName ?? 'User'),
+                subtitle: Text(user?.email ?? 'No email'),
+              ),
+              const Divider(),
+              // Theme Setting
+              ListTile(
+                leading: Icon(
+                  isDarkMode ? Icons.dark_mode : Icons.light_mode,
+                  color: Theme.of(context).primaryColor,
+                ),
+                title: const Text('Dark Mode'),
+                trailing: Switch(
+                  value: isDarkMode,
+                  onChanged: (value) {
+                    ref.read(themeProvider.notifier).toggleTheme(value);
+                    Navigator.pop(context); // Close modal after changing theme
+                  },
+                  activeColor: Theme.of(context).primaryColor,
+                ),
+              ),
+              // Logout
+              ListTile(
+                leading: const Icon(Icons.logout, color: Colors.red),
+                title: const Text('Log Out', style: TextStyle(color: Colors.red)),
+                onTap: () async {
+                  Navigator.pop(context); // Close modal
+                  await ref.read(authRepositoryProvider).signOut();
+                  if (mounted) {
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(
+                        builder: (context) => const LoginScreen(),
+                      ),
+                    );
+                  }
+                },
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   final List<Map<String, dynamic>> _plants = [
     {
       'name': 'Parlor Palm Tree',
@@ -83,10 +152,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // App Logo/Name and Theme Switch
+              // App Logo/Name and Profile
               Row(
-                mainAxisAlignment: MainAxisAlignment
-                    .spaceBetween, // Align items to start and end
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Row(
                     children: [
@@ -94,32 +162,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         Icons.local_florist,
                         color: Theme.of(context).primaryColor,
                         size: 40,
-                      ), // Use theme primary color
-                      SizedBox(width: 8),
+                      ),
+                      const SizedBox(width: 8),
                       Text(
-                        'Khodra', // App name as requested
+                        'Khodra',
                         style: TextStyle(
                           fontSize: 40,
                           fontWeight: FontWeight.bold,
-                          color: Theme.of(
-                            context,
-                          ).textTheme.headlineLarge?.color, // Use theme color
+                          color: Theme.of(context).textTheme.headlineLarge?.color,
                         ),
                       ),
                     ],
                   ),
-                  Switch(
-                    value:
-                        ref.watch(themeProvider) ==
-                        ThemeMode.dark, // Watch theme mode
-                    onChanged: (isDark) {
-                      ref
-                          .read(themeProvider.notifier)
-                          .toggleTheme(isDark); // Toggle theme
-                    },
-                    activeColor: Theme.of(
-                      context,
-                    ).primaryColor, // Use theme primary color
+                  GestureDetector(
+                    onTap: _showProfileModal,
+                    child: CircleAvatar(
+                      radius: 24,
+                      backgroundColor: Theme.of(context).primaryColor.withOpacity(0.2),
+                      backgroundImage: ref.watch(authRepositoryProvider).currentUser?.photoURL != null
+                          ? NetworkImage(ref.watch(authRepositoryProvider).currentUser!.photoURL!)
+                          : null,
+                      child: ref.watch(authRepositoryProvider).currentUser?.photoURL == null
+                          ? Icon(Icons.person, color: Theme.of(context).primaryColor)
+                          : null,
+                    ),
                   ),
                 ],
               ),

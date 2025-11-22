@@ -1,24 +1,49 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:plant_care_app/core/theme/colors.dart'; // Import colors
-import 'package:plant_care_app/features/auth/presentation/screens/signup_screen.dart';
+import 'package:plant_care_app/features/auth/data/repositories/auth_repository.dart';
 import 'package:plant_care_app/features/home/presentation/screens/home_screen.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
-  void _login() {
-    // TODO: Implement Google login logic
-    // For now, navigate to HomeScreen
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (context) => const HomeScreen(),
-      ),
-    );
+class _LoginScreenState extends ConsumerState<LoginScreen> {
+  bool _isLoading = false;
+
+  Future<void> _login() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final userCredential = await ref
+          .read(authRepositoryProvider)
+          .signInWithGoogle();
+
+      if (userCredential != null && mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => const HomeScreen(),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to sign in with Google: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -58,36 +83,26 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 48),
 
               // Google Login Button
-              ElevatedButton.icon(
-                onPressed: _login,
-                icon: const Icon(Icons.login), // Using generic login icon as placeholder for Google
-                label: const Text(
-                  'Sign in with Google',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30.0),
-                  ),
-                ),
-              ),
+              _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : ElevatedButton.icon(
+                      onPressed: _login,
+                      icon: const Icon(Icons
+                          .login), // Using generic login icon as placeholder for Google
+                      label: const Text(
+                        'Sign in with Google',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 15),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30.0),
+                        ),
+                      ),
+                    ),
               const SizedBox(height: 16),
 
-              // Sign Up Link
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(
-                      builder: (context) => const SignupScreen(),
-                    ),
-                  );
-                },
-                child: Text(
-                  'Don\'t have an account? Sign up',
-                  style: TextStyle(color: Theme.of(context).hintColor, fontSize: 16),
-                ),
-              ),
             ],
           ),
         ),
