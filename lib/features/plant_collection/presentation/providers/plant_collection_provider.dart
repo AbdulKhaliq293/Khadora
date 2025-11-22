@@ -36,6 +36,20 @@ final plantCollectionProvider = StreamProvider<List<Plant>>((ref) {
             healthCheckHistory: (data['healthCheckHistory'] as List<dynamic>?)
                 ?.map((e) => e.toString())
                 .toList(),
+            sunlight: data['sunlight'],
+            pruning: data['pruning'],
+            hardiness: data['hardiness'],
+            careInstructions: data['careInstructions'],
+            type: data['type'],
+            cycle: data['cycle'],
+            growthRate: data['growthRate'],
+            maintenance: data['maintenance'],
+            poisonousToHumans: data['poisonousToHumans'],
+            poisonousToPets: data['poisonousToPets'],
+            droughtTolerant: data['droughtTolerant'],
+            invasive: data['invasive'],
+            apiId: data['apiId'],
+            apiSource: data['apiSource'],
           );
         }).toList();
       });

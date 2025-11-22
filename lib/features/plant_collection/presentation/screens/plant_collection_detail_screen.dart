@@ -227,6 +227,62 @@ class _PlantCollectionDetailScreenState
                           widget.plant.history,
                         ),
 
+                        const SizedBox(height: 32),
+                        
+                        // Detailed Attributes Section
+                        _buildSectionHeader("Plant Details"),
+                        const SizedBox(height: 16),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            if (widget.plant.type != null) _buildAttributeChip("Type", widget.plant.type!),
+                            if (widget.plant.cycle != null) _buildAttributeChip("Cycle", widget.plant.cycle!),
+                            if (widget.plant.growthRate != null) _buildAttributeChip("Growth", widget.plant.growthRate!),
+                            if (widget.plant.hardiness != null) _buildAttributeChip("Hardiness", widget.plant.hardiness!),
+                            if (widget.plant.poisonousToHumans == true) _buildAttributeChip("Poisonous (Humans)", "Yes", color: Colors.red),
+                            if (widget.plant.poisonousToPets == true) _buildAttributeChip("Poisonous (Pets)", "Yes", color: Colors.red),
+                            if (widget.plant.droughtTolerant == true) _buildAttributeChip("Drought Tolerant", "Yes", color: Colors.green),
+                            if (widget.plant.invasive == true) _buildAttributeChip("Invasive", "Yes", color: Colors.orange),
+                          ],
+                        ),
+
+                        if (widget.plant.careInstructions != null) ...[
+                          const SizedBox(height: 32),
+                          _buildSectionHeader("Care Instructions"),
+                          const SizedBox(height: 12),
+                          Text(
+                            widget.plant.careInstructions!,
+                            style: const TextStyle(
+                              color: Colors.black87,
+                              height: 1.6,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ],
+                        
+                        if (widget.plant.pruning != null) ...[
+                          const SizedBox(height: 32),
+                          _buildSectionHeader("Pruning"),
+                          const SizedBox(height: 12),
+                           _buildInfoRow(
+                            Icons.cut,
+                            "Best time to prune",
+                            widget.plant.pruning!,
+                          ),
+                        ],
+                        
+                        if (widget.plant.sunlight != null) ...[
+                          const SizedBox(height: 32),
+                          _buildSectionHeader("Sunlight"),
+                          const SizedBox(height: 12),
+                           _buildInfoRow(
+                            Icons.wb_sunny,
+                            "Requirement",
+                            widget.plant.sunlight!,
+                          ),
+                        ],
+
                         const SizedBox(height: 50),
                       ],
                     ),
@@ -512,6 +568,39 @@ class _PlantCollectionDetailScreenState
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildAttributeChip(String label, String value, {Color? color}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: (color ?? Theme.of(context).primaryColor).withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: (color ?? Theme.of(context).primaryColor).withOpacity(0.3),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            "$label: ",
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: color ?? Theme.of(context).primaryColor,
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 12,
+              color: color ?? Theme.of(context).primaryColor,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

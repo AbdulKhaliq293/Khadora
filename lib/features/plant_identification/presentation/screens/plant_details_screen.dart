@@ -171,6 +171,48 @@ class _PlantDetailsScreenState extends ConsumerState<PlantDetailsScreen> {
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ],
+                  
+                  if (widget.plant['description'] != null) ...[
+                    const SizedBox(height: 24),
+                    Text(
+                      'Description',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      widget.plant['description'],
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+
+                  const SizedBox(height: 24),
+                  Text(
+                    'Care Guide',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  _buildCareItem(context, Icons.water_drop, 'Watering', widget.plant['watering']),
+                  const SizedBox(height: 12),
+                  _buildCareItem(context, Icons.wb_sunny, 'Sunlight', widget.plant['sunlight']),
+                  const SizedBox(height: 12),
+                  _buildCareItem(context, Icons.cut, 'Pruning', widget.plant['pruning'] != null ? 'Prune in: ${widget.plant['pruning']}' : null),
+                  const SizedBox(height: 12),
+                  _buildCareItem(context, Icons.thermostat, 'Hardiness', widget.plant['care_level']),
+
+                  if (widget.plant['careInstructions'] != null) ...[
+                    const SizedBox(height: 24),
+                    Text(
+                      'Detailed Instructions',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      widget.plant['careInstructions'],
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                  
                   const SizedBox(height: 40),
                 ],
               ),
@@ -233,6 +275,45 @@ class _PlantDetailsScreenState extends ConsumerState<PlantDetailsScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildCareItem(BuildContext context, IconData icon, String title, String? value) {
+    if (value == null || value.isEmpty || value == 'Check plant database') {
+      return const SizedBox.shrink();
+    }
+    
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Theme.of(context).primaryColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: Theme.of(context).primaryColor, size: 20),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
