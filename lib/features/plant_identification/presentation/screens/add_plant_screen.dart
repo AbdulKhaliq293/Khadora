@@ -150,11 +150,19 @@ class _AddPlantScreenState extends ConsumerState<AddPlantScreen>
                'imageFile': _capturedImage, // Pass the local file
              };
 
+            // Pause camera to prevent buffer errors
+            _cameraController?.pausePreview();
+
             Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (context) => PlantDetailsScreen(plant: plantMap),
               ),
-            );
+            ).then((_) {
+              // Resume camera when returning
+              if (mounted && _cameraController != null && _cameraController!.value.isInitialized) {
+                _cameraController?.resumePreview();
+              }
+            });
              // Reset state so we don't navigate again immediately if we pop back
              ref.read(plantIdentificationNotifierProvider.notifier).reset();
           }

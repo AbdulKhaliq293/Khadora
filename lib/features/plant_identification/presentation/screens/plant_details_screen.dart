@@ -17,20 +17,55 @@ class _PlantDetailsScreenState extends ConsumerState<PlantDetailsScreen> {
   bool _isSaving = false;
 
   Future<void> _addToCollection() async {
+    // Show dialog to select category
+    final String? category = await showDialog<String>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('Where is this plant located?'),
+        children: [
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, 'Indoor'),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8.0),
+              child: Text('Indoor'),
+            ),
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, 'Outdoor'),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8.0),
+              child: Text('Outdoor'),
+            ),
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, 'Garden'),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8.0),
+              child: Text('Garden'),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (category == null) return;
+
     setState(() {
       _isSaving = true;
     });
 
     try {
-      await ref.read(plantActionProvider).addToCollection(widget.plant);
+      // Prepare data with category
+      final plantData = Map<String, dynamic>.from(widget.plant);
+      plantData['category'] = category;
+      plantData['isIndoor'] = category == 'Indoor';
+
+      await ref.read(plantActionProvider).addToCollection(plantData);
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Plant added to collection!')),
         );
-        // Navigate to Home Screen or Collection Screen?
-        // User said: "second add to collection which add over firebase"
-        // Usually after adding, we might go back home or to collection.
-        // I'll pop to root (Home) as per "cancel which take to the home screen".
         Navigator.of(context).popUntil((route) => route.isFirst);
       }
     } catch (e) {

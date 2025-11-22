@@ -6,6 +6,7 @@ class Plant {
   final String timeToWater;
   final bool isToxic;
   final bool isIndoor;
+  final String category; // Added category field
   final String origin;
   final String history;
   final String? fertilizerInfo; // Added for fertilizer management
@@ -20,6 +21,7 @@ class Plant {
     required this.timeToWater,
     required this.isToxic,
     required this.isIndoor,
+    this.category = 'Indoor', // Default to Indoor
     required this.origin,
     required this.history,
     this.fertilizerInfo,

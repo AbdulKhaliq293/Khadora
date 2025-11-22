@@ -6,7 +6,9 @@ import 'package:plant_care_app/core/theme/theme_provider.dart'; // Import ThemeP
 import 'package:plant_care_app/features/auth/data/repositories/auth_repository.dart';
 import 'package:plant_care_app/features/auth/presentation/screens/login_screen.dart';
 import 'package:plant_care_app/features/plant_collection/domain/entities/plant_model.dart';
+import 'package:plant_care_app/features/plant_collection/presentation/providers/plant_collection_provider.dart';
 import 'package:plant_care_app/features/plant_collection/presentation/screens/plant_collection_detail_screen.dart';
+import 'package:plant_care_app/features/plant_identification/presentation/providers/plant_action_provider.dart';
 import 'package:plant_care_app/features/plant_identification/presentation/screens/add_plant_screen.dart'; // Import AddPlantScreen
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -21,8 +23,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   // Change to ConsumerState
   String _selectedCategory = 'All'; // State for selected category
 
-  // Placeholder for plant data - will be replaced with actual data later
-  // Using network image URLs now as per user feedback.
   void _showProfileModal() {
     showModalBottomSheet(
       context: context,
@@ -90,60 +90,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  final List<Map<String, dynamic>> _plants = [
-    {
-      'name': 'Parlor Palm Tree',
-      'type': 'Indoor',
-      'water': 70,
-      'light': 65,
-      'imageUrl':
-          'https://images.unsplash.com/photo-1588302740742-1accfa27b0f6?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8bW9uc3RybyUyMHBsYW50fGVufDB8fDB8fHww&auto=format&fit=crop&q=60&w=900', // Network image URL
-      'origin': 'Mexico',
-      'watering': 'Frequent',
-      'sunlight': 'Part shade',
-      'maintenance': 'Low',
-      'care_level': 'Medium',
-      'isToxic': false,
-    },
-    {
-      'name': 'Coconut Tree',
-      'type': 'Outdoor',
-      'water': 50,
-      'light': 80,
-      'imageUrl':
-          'https://images.unsplash.com/photo-1588302740742-1accfa27b0f6?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8bW9uc3RybyUyMHBsYW50fGVufDB8fDB8fHww&auto=format&fit=crop&q=60&w=900', // Network image URL (using same for placeholder)
-      'origin': 'Southeast Asia',
-      'watering': 'Moderate',
-      'sunlight': 'Full sun',
-      'maintenance': 'Medium',
-      'care_level': 'Medium',
-      'isToxic': true,
-    },
-    {
-      'name': 'Green Blum Tree',
-      'type': 'Garden',
-      'water': 60,
-      'light': 70,
-      'imageUrl':
-          'https://images.unsplash.com/photo-1723788217248-508d1836e153?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTh8fHBvdGhvc3BsYW50fGVufDB8fDB8fHww&auto=format&fit=crop&q=60&w=900', // Network image URL
-      'origin': 'South America',
-      'watering': 'Regular',
-      'sunlight': 'Full sun',
-      'maintenance': 'Low',
-      'care_level': 'Easy',
-      'isToxic': false,
-    },
-  ];
-
   @override
   Widget build(BuildContext context) {
-    // Filter plants based on selected category
-    List<Map<String, dynamic>> filteredPlants = _plants.where((plant) {
-      if (_selectedCategory == 'All') {
-        return true;
-      }
-      return plant['type'] == _selectedCategory;
-    }).toList();
+    final plantsAsync = ref.watch(plantCollectionProvider);
 
     return Scaffold(
       body: SafeArea(
@@ -247,35 +196,42 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
               // Plant List
               Expanded(
-                child: filteredPlants.isEmpty
-                    ? Center(
+                child: plantsAsync.when(
+                  data: (plants) {
+                    final filteredPlants = plants.where((plant) {
+                      if (_selectedCategory == 'All') {
+                        return true;
+                      }
+                      return plant.category == _selectedCategory;
+                    }).toList();
+
+                    if (filteredPlants.isEmpty) {
+                      return Center(
                         child: Text(
                           'No plants found in this category.',
                           style: TextStyle(
                             color: Theme.of(context).hintColor,
-                          ), // Use theme hint color
+                          ),
                         ),
-                      )
-                    : ListView.builder(
-                        itemCount: filteredPlants.length,
-                        itemBuilder: (context, index) {
-                          final plant = filteredPlants[index];
-                          return _buildPlantCard(
-                            context,
-                            plant['name'],
-                            plant['type'],
-                            plant['water'],
-                            plant['light'],
-                            plant['imageUrl'],
-                            plant['origin'], // Pass origin
-                            plant['watering'], // Pass watering
-                            plant['sunlight'], // Pass sunlight
-                            plant['maintenance'], // Pass maintenance
-                            plant['care_level'], // Pass careLevel
-                            plant['isToxic'], // Pass isToxic
-                          );
-                        },
-                      ),
+                      );
+                    }
+
+                    return ListView.builder(
+                      itemCount: filteredPlants.length,
+                      itemBuilder: (context, index) {
+                        final plant = filteredPlants[index];
+                        return _buildPlantCard(context, plant);
+                      },
+                    );
+                  },
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (error, stack) => Center(
+                    child: Text(
+                      'Error loading plants: $error',
+                      style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
@@ -300,6 +256,43 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ), // Use theme icon color
       ),
     );
+  }
+
+  Future<void> _confirmDelete(BuildContext context, WidgetRef ref, Plant plant) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Plant'),
+        content: Text('Are you sure you want to delete ${plant.name}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await ref.read(plantActionProvider).deletePlant(plant.plantId, plant.imageUrl);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Plant deleted')),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error deleting plant: $e')),
+          );
+        }
+      }
+    }
   }
 
   Widget _buildCategoryChip(String category) {
@@ -336,43 +329,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildPlantCard(
-    BuildContext context,
-    String? name, // Made nullable
-    String? type, // Made nullable
-    int? water, // Made nullable
-    int? light, // Made nullable
-    String? imageUrl, // Made nullable
-    String? origin, // Added origin, made nullable
-    String? watering, // Added watering, made nullable
-    String? sunlight, // Added sunlight, made nullable
-    String? maintenance, // Added maintenance, made nullable
-    String? careLevel, // Added careLevel, made nullable
-    bool? isToxic, // Added isToxic, made nullable
-  ) {
+  Widget _buildPlantCard(BuildContext context, Plant plant) {
     final cardHeight = MediaQuery.of(context).size.height * 0.28;
 
     return GestureDetector(
       onTap: () {
-        // Navigate to PlantCollectionDetailScreen
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (context) => PlantCollectionDetailScreen(
-              plant: Plant(
-                plantId: name ?? 'unknown_id',
-                name: name ?? 'Unknown Plant',
-                imageUrl: imageUrl ?? 'assets/images/placeholder_plant.png',
-                description:
-                    'A beautiful ${name ?? 'plant'} that is ${type?.toLowerCase() ?? 'lovely'} and easy to care for.',
-                timeToWater: watering ?? 'Moderate',
-                isToxic: isToxic ?? false,
-                isIndoor: type == 'Indoor',
-                origin: origin ?? 'Unknown',
-                history:
-                    'This plant has a rich history in ${origin ?? 'various regions'}.',
-                fertilizerInfo: 'Apply balanced fertilizer monthly.',
-              ),
-            ),
+            builder: (context) => PlantCollectionDetailScreen(plant: plant),
           ),
         );
       },
@@ -383,7 +347,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           borderRadius: BorderRadius.circular(30.0),
           image: DecorationImage(
             image: NetworkImage(
-              imageUrl ?? 'assets/images/placeholder_plant.png',
+              plant.imageUrl.isNotEmpty
+                  ? plant.imageUrl
+                  : 'https://images.unsplash.com/photo-1588302740742-1accfa27b0f6?auto=format&fit=crop&q=60&w=900', // Fallback
             ),
             fit: BoxFit.cover,
             onError: (exception, stackTrace) {},
@@ -436,7 +402,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          name ?? 'Unknown Plant',
+                          plant.name,
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -447,7 +413,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          type ?? 'Unknown Type',
+                          plant.category,
                           style: TextStyle(
                             fontSize: 14,
                             color: Theme.of(context).hintColor,
@@ -464,23 +430,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              '${water ?? 0}%',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Theme.of(
-                                  context,
-                                ).textTheme.bodyMedium?.color,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Icon(
-                              Icons.wb_sunny,
-                              color: Theme.of(context).primaryColor,
-                              size: 16,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${light ?? 0}%',
+                              plant.timeToWater,
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Theme.of(
@@ -496,9 +446,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               ),
             ),
-            // Arrow Icon (optional, perhaps top right or bottom right?)
-            // I'll leave it out for now as the whole card is tappable, or add a small indicator if needed.
-            // The previous design had a specific arrow button. Let's add a small glass circle arrow on the right.
+            // Arrow Icon
             Positioned(
               right: 20,
               bottom: 20,
@@ -518,6 +466,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       color: Theme.of(context).iconTheme.color,
                       size: 20,
                     ),
+                  ),
+                ),
+              ),
+            ),
+            // Delete Button
+            Positioned(
+              top: 10,
+              right: 10,
+              child: GestureDetector(
+                onTap: () => _confirmDelete(context, ref, plant),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.8),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.delete,
+                    color: Colors.white,
+                    size: 20,
                   ),
                 ),
               ),
