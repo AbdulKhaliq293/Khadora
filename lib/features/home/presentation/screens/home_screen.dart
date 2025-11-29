@@ -12,6 +12,7 @@ import 'package:plant_care_app/features/plant_identification/presentation/provid
 import 'package:plant_care_app/features/plant_identification/presentation/screens/add_plant_screen.dart'; // Import AddPlantScreen
 import 'package:plant_care_app/features/home/data/services/recommendation_service.dart';
 import 'package:plant_care_app/features/home/presentation/widgets/recommendation_card.dart';
+import 'package:plant_care_app/features/weather/presentation/widgets/forecast_widget.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   // Change to ConsumerStatefulWidget
@@ -142,15 +143,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-              Text(
-                'Welcome!',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 18,
-                  color: Theme.of(context).hintColor, // Use theme hint color
-                ),
-              ),
-              const SizedBox(height: 48),
+              const ForecastWidget(),
+              const SizedBox(height: 24),
 
               // Search Bar
               TextField(

@@ -51,5 +51,7 @@
 	<string>We need microphone access for video recording.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>We need photo library access to choose plant images.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>We need your location to provide local weather updates for your plants.</string>
 </dict>
 </plist>

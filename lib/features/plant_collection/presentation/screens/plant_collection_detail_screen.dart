@@ -5,9 +5,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:plant_care_app/core/theme/colors.dart';
 import 'package:plant_care_app/features/plant_collection/data/services/gemini_service.dart';
+import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:plant_care_app/features/plant_collection/domain/entities/maintenance_log.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:plant_care_app/features/plant_collection/domain/entities/plant_model.dart';
 import 'package:plant_care_app/features/plant_collection/presentation/providers/maintenance_provider.dart';
+import 'package:plant_care_app/features/weather/data/services/weather_service.dart';
+import 'package:plant_care_app/features/weather/presentation/providers/weather_provider.dart';
 
 class PlantCollectionDetailScreen extends ConsumerStatefulWidget {
   final Plant plant;
@@ -304,73 +308,23 @@ class _PlantCollectionDetailScreenState
     });
 
     try {
-      final advice = await ref.read(geminiServiceProvider).getPlantCareAdvice(
-            plantName: widget.plant.name,
-            description: widget.plant.description,
-            isIndoor: widget.plant.isIndoor,
-          );
-
+      final logs = await ref.read(maintenanceLogsProvider(widget.plant.plantId).future);
+      
       if (!mounted) return;
 
       showModalBottomSheet(
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
-        builder: (context) => DraggableScrollableSheet(
-          initialChildSize: 0.7,
-          minChildSize: 0.5,
-          maxChildSize: 0.9,
-          builder: (context, scrollController) => Container(
-            decoration: BoxDecoration(
-              color: Theme.of(context).scaffoldBackgroundColor,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            ),
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    margin: const EdgeInsets.only(bottom: 20),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).hintColor.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                Row(
-                  children: [
-                    Icon(Icons.auto_awesome, color: Theme.of(context).primaryColor),
-                    const SizedBox(width: 10),
-                    Text(
-                      "Gemini AI Care Guide",
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                Expanded(
-                  child: SingleChildScrollView(
-                    controller: scrollController,
-                    child: Text(
-                      advice,
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            height: 1.6,
-                          ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+        builder: (context) => _GeminiChatSheet(
+          plant: widget.plant,
+          recentLogs: logs,
         ),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to get advice: $e')),
+        SnackBar(content: Text('Failed to open chat: $e')),
       );
     } finally {
       if (mounted) {
@@ -589,7 +543,7 @@ class _PlantCollectionDetailScreenState
                                       ),
                                       const SizedBox(width: 10),
                                       const Text(
-                                        "Ask Gemini for Care Guide",
+                                        "Ask AI for Care Guide",
                                         style: TextStyle(
                                           color: Colors.white,
                                           fontSize: 16,
@@ -757,6 +711,8 @@ class _PlantCollectionDetailScreenState
   }
 
   Widget _buildVerticalSlider() {
+    final weatherAsync = ref.watch(weatherProvider);
+
     return Container(
       height: 180,
       width: 56,
@@ -771,84 +727,122 @@ class _PlantCollectionDetailScreenState
           ),
         ],
       ),
-      child: Column(
-        children: [
-          const SizedBox(height: 6),
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: Theme.of(context).scaffoldBackgroundColor,
-              shape: BoxShape.circle,
+      child: weatherAsync.when(
+        data: (weather) => Column(
+          children: [
+            const SizedBox(height: 6),
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                _getWeatherIcon(weather.iconCode),
+                color: Colors.orange,
+                size: 24,
+              ),
             ),
-            child: const Icon(
-              Icons.wb_sunny_rounded,
-              color: Colors.orange,
-              size: 24,
-            ),
-          ),
-          Expanded(
-            child: Center(
-              child: RotatedBox(
-                quarterTurns: 3,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      "24°C",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Theme.of(context).textTheme.bodyLarge?.color,
+            Expanded(
+              child: Center(
+                child: RotatedBox(
+                  quarterTurns: 3,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        "${weather.temperature.round()}°C",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Theme.of(context).textTheme.bodyLarge?.color,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-          Container(
-            width: 44,
-            height: 80,
-            margin: const EdgeInsets.only(bottom: 6),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Colors.orangeAccent, Colors.lightBlueAccent],
+            Container(
+              width: 44,
+              height: 80,
+              margin: const EdgeInsets.only(bottom: 6),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.orangeAccent, Colors.lightBlueAccent],
+                ),
+                borderRadius: BorderRadius.circular(22),
               ),
-              borderRadius: BorderRadius.circular(22),
-            ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Positioned(
-                  top: 20,
-                  child: Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).cardColor.withOpacity(0.3),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Theme.of(context).cardColor,
-                        width: 2,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Positioned(
+                    top: 20,
+                    child: Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).cardColor.withOpacity(0.3),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Theme.of(context).cardColor,
+                          width: 2,
+                        ),
                       ),
-                    ),
-                    child: Center(
-                      child: CircleAvatar(
-                        radius: 4,
-                        backgroundColor: Theme.of(context).cardColor,
+                      child: Center(
+                        child: CircleAvatar(
+                          radius: 4,
+                          backgroundColor: Theme.of(context).cardColor,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
+          ],
+        ),
+        loading: () => const Center(
+          child: Padding(
+            padding: EdgeInsets.all(8.0),
+            child: CircularProgressIndicator(strokeWidth: 2),
           ),
-        ],
+        ),
+        error: (err, stack) => Center(
+          child: Icon(
+            Icons.error_outline,
+            color: Theme.of(context).colorScheme.error,
+          ),
+        ),
       ),
     );
+  }
+
+  IconData _getWeatherIcon(String iconCode) {
+    switch (iconCode) {
+      case '01d': return Icons.wb_sunny;
+      case '01n': return Icons.nightlight_round;
+      case '02d':
+      case '02n': return Icons.wb_cloudy;
+      case '03d':
+      case '03n':
+      case '04d':
+      case '04n': return Icons.cloud;
+      case '09d':
+      case '09n': return Icons.grain;
+      case '10d':
+      case '10n': return Icons.water_drop;
+      case '11d':
+      case '11n': return Icons.flash_on;
+      case '13d':
+      case '13n': return Icons.ac_unit;
+      case '50d':
+      case '50n': return Icons.blur_on;
+      default: return Icons.wb_sunny;
+    }
   }
 
   Widget _buildStatBadge(IconData icon, String title, String value) {
@@ -1031,6 +1025,291 @@ class _PlantCollectionDetailScreenState
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ChatMessage {
+  final String text;
+  final bool isUser;
+  _ChatMessage({required this.text, required this.isUser});
+}
+
+class _GeminiChatSheet extends ConsumerStatefulWidget {
+  final Plant plant;
+  final List<MaintenanceLog> recentLogs;
+
+  const _GeminiChatSheet({
+    required this.plant,
+    required this.recentLogs,
+  });
+
+  @override
+  ConsumerState<_GeminiChatSheet> createState() => _GeminiChatSheetState();
+}
+
+class _GeminiChatSheetState extends ConsumerState<_GeminiChatSheet> {
+  final TextEditingController _controller = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  final List<_ChatMessage> _messages = [];
+  bool _isLoading = true;
+  // Note: We should strictly use Google Generative AI types here, but passing it around might be complex.
+  // Ideally GeminiService returns an opaque handle or we keep it here.
+  // Since GeminiService provides startChat, we'll use it.
+  late final dynamic _chatSession; 
+
+  @override
+  void initState() {
+    super.initState();
+    _initChat();
+  }
+
+  Future<void> _initChat() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cacheKey = 'plant_advice_${widget.plant.plantId}';
+      final timeKey = 'plant_advice_time_${widget.plant.plantId}';
+      
+      final cachedAdvice = prefs.getString(cacheKey);
+      final cachedTimeStr = prefs.getString(timeKey);
+      
+      String? adviceToUse;
+      bool useCache = false;
+
+      if (cachedAdvice != null && cachedTimeStr != null) {
+        final cachedTime = DateTime.parse(cachedTimeStr);
+        if (DateTime.now().difference(cachedTime).inHours < 24) {
+          useCache = true;
+          adviceToUse = cachedAdvice;
+        }
+      }
+
+      final service = ref.read(geminiServiceProvider);
+      _chatSession = service.startPlantChat(
+        plantName: widget.plant.name,
+        description: widget.plant.description,
+        isIndoor: widget.plant.isIndoor,
+        recentLogs: widget.recentLogs,
+        cachedAdvice: useCache ? adviceToUse : null,
+      );
+
+      if (useCache && adviceToUse != null) {
+        if (mounted) {
+          setState(() {
+            _messages.add(_ChatMessage(text: adviceToUse!, isUser: false));
+            _isLoading = false;
+          });
+        }
+      } else {
+        final initialAdvice = await service.getInitialCareAdvice(_chatSession);
+        
+        await prefs.setString(cacheKey, initialAdvice);
+        await prefs.setString(timeKey, DateTime.now().toIso8601String());
+
+        if (mounted) {
+          setState(() {
+            _messages.add(_ChatMessage(text: initialAdvice, isUser: false));
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _messages.add(_ChatMessage(text: "Error initializing chat: $e", isUser: false));
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _sendMessage() async {
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
+
+    _controller.clear();
+    setState(() {
+      _messages.add(_ChatMessage(text: text, isUser: true));
+      _isLoading = true;
+    });
+    _scrollToBottom();
+
+    try {
+      // Import 'package:google_generative_ai/google_generative_ai.dart'; is needed for Content.text
+      // Since we can't easily change imports in this file block without affecting top, 
+      // we'll assume we can call sendMessage on _chatSession directly if we type it correctly or use dynamic.
+      // _chatSession is of type ChatSession.
+      final response = await _chatSession.sendMessage(Content.text(text));
+      
+      if (mounted) {
+        setState(() {
+          _messages.add(_ChatMessage(
+            text: response.text ?? "I couldn't generate a response.",
+            isUser: false,
+          ));
+          _isLoading = false;
+        });
+        _scrollToBottom();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _messages.add(_ChatMessage(text: "Error: $e", isUser: false));
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.8,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      builder: (context, scrollController) => Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            // Handle
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).hintColor.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            // Header
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  Icon(Icons.auto_awesome, color: Theme.of(context).primaryColor),
+                  const SizedBox(width: 10),
+                  Text(
+                    "Plant Care Assistant",
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                ],
+              ),
+            ),
+            const Divider(),
+            
+            // Chat List
+            Expanded(
+              child: _messages.isEmpty && _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : ListView.builder(
+                      controller: _scrollController, // Use local controller for auto-scroll
+                      // Note: Using DraggableScrollableSheet's controller allows the sheet to drag, 
+                      // but we want auto-scroll. Nested scrolling might be tricky. 
+                      // A common pattern is to let the sheet be full height mostly.
+                      // We'll try to attach the primary controller if we want drag, but for chat, local control is better for 'scrollToBottom'.
+                      // However, if we don't use 'scrollController' passed by sheet, it won't drag up/down by scrolling content.
+                      // Let's try just using Expanded and our own list view.
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _messages.length + (_isLoading && _messages.isNotEmpty ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        if (index == _messages.length) {
+                          return const Padding(
+                            padding: EdgeInsets.all(8.0),
+                            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                          );
+                        }
+                        final msg = _messages[index];
+                        return Align(
+                          alignment: msg.isUser ? Alignment.centerRight : Alignment.centerLeft,
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(vertical: 4),
+                            padding: const EdgeInsets.all(12),
+                            constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.8),
+                            decoration: BoxDecoration(
+                              color: msg.isUser 
+                                  ? Theme.of(context).primaryColor 
+                                  : Theme.of(context).cardColor,
+                              borderRadius: BorderRadius.circular(16).copyWith(
+                                bottomRight: msg.isUser ? const Radius.circular(0) : null,
+                                bottomLeft: !msg.isUser ? const Radius.circular(0) : null,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 5,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Text(
+                              msg.text,
+                              style: TextStyle(
+                                color: msg.isUser ? Colors.white : Theme.of(context).textTheme.bodyLarge?.color,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+            
+            // Input Area
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                16, 
+                8, 
+                16, 
+                MediaQuery.of(context).viewInsets.bottom + 16 // Handle keyboard
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _controller,
+                      decoration: InputDecoration(
+                        hintText: "Ask a follow-up question...",
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          borderSide: BorderSide.none,
+                        ),
+                        filled: true,
+                        fillColor: Theme.of(context).cardColor,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      ),
+                      onSubmitted: (_) => _sendMessage(),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  CircleAvatar(
+                    backgroundColor: Theme.of(context).primaryColor,
+                    child: IconButton(
+                      icon: const Icon(Icons.send, color: Colors.white),
+                      onPressed: _sendMessage,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
