@@ -10,6 +10,8 @@ import 'package:plant_care_app/features/plant_collection/presentation/providers/
 import 'package:plant_care_app/features/plant_collection/presentation/screens/plant_collection_detail_screen.dart';
 import 'package:plant_care_app/features/plant_identification/presentation/providers/plant_action_provider.dart';
 import 'package:plant_care_app/features/plant_identification/presentation/screens/add_plant_screen.dart'; // Import AddPlantScreen
+import 'package:plant_care_app/features/home/data/services/recommendation_service.dart';
+import 'package:plant_care_app/features/home/presentation/widgets/recommendation_card.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   // Change to ConsumerStatefulWidget
@@ -93,6 +95,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final plantsAsync = ref.watch(plantCollectionProvider);
+    final recommendationsAsync = ref.watch(recommendationsProvider);
 
     return Scaffold(
       body: SafeArea(
@@ -180,57 +183,108 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Category Filters
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    _buildCategoryChip('All'),
-                    _buildCategoryChip('Indoor'),
-                    _buildCategoryChip('Outdoor'),
-                    _buildCategoryChip('Garden'),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // Plant List
               Expanded(
-                child: plantsAsync.when(
-                  data: (plants) {
-                    final filteredPlants = plants.where((plant) {
-                      if (_selectedCategory == 'All') {
-                        return true;
-                      }
-                      return plant.category == _selectedCategory;
-                    }).toList();
+                child: CustomScrollView(
+                  slivers: [
+                    // Recommendations Section
+                    SliverToBoxAdapter(
+                      child: recommendationsAsync.when(
+                        data: (plants) => plants.isNotEmpty
+                            ? Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Top Recommendations',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  SizedBox(
+                                    height: 300,
+                                    child: ListView.builder(
+                                      scrollDirection: Axis.horizontal,
+                                      itemCount: plants.length,
+                                      itemBuilder: (context, index) {
+                                        return RecommendationCard(plant: plants[index]);
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20),
+                                ],
+                              )
+                            : const SizedBox.shrink(),
+                        loading: () => const SizedBox(height: 300, child: Center(child: CircularProgressIndicator())),
+                        error: (error, stack) => const SizedBox.shrink(),
+                      ),
+                    ),
 
-                    if (filteredPlants.isEmpty) {
-                      return Center(
-                        child: Text(
-                          'No plants found in this category.',
-                          style: TextStyle(
-                            color: Theme.of(context).hintColor,
+                    // Category Filters
+                    SliverToBoxAdapter(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                _buildCategoryChip('All'),
+                                _buildCategoryChip('Indoor'),
+                                _buildCategoryChip('Outdoor'),
+                                _buildCategoryChip('Garden'),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                        ],
+                      ),
+                    ),
+
+                    // Plant List
+                    plantsAsync.when(
+                      data: (plants) {
+                        final filteredPlants = plants.where((plant) {
+                          if (_selectedCategory == 'All') {
+                            return true;
+                          }
+                          return plant.category == _selectedCategory;
+                        }).toList();
+
+                        if (filteredPlants.isEmpty) {
+                          return SliverToBoxAdapter(
+                            child: Center(
+                              child: Text(
+                                'No plants found in this category.',
+                                style: TextStyle(
+                                  color: Theme.of(context).hintColor,
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+
+                        return SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) {
+                              final plant = filteredPlants[index];
+                              return _buildPlantCard(context, plant);
+                            },
+                            childCount: filteredPlants.length,
+                          ),
+                        );
+                      },
+                      loading: () => const SliverToBoxAdapter(child: Center(child: CircularProgressIndicator())),
+                      error: (error, stack) => SliverToBoxAdapter(
+                        child: Center(
+                          child: Text(
+                            'Error loading plants: $error',
+                            style: TextStyle(color: Theme.of(context).colorScheme.error),
                           ),
                         ),
-                      );
-                    }
-
-                    return ListView.builder(
-                      itemCount: filteredPlants.length,
-                      itemBuilder: (context, index) {
-                        final plant = filteredPlants[index];
-                        return _buildPlantCard(context, plant);
-                      },
-                    );
-                  },
-                  loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (error, stack) => Center(
-                    child: Text(
-                      'Error loading plants: $error',
-                      style: TextStyle(color: Theme.of(context).colorScheme.error),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ],
