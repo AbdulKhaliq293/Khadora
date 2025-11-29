@@ -1,20 +1,107 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:plant_care_app/core/theme/colors.dart';
+import 'package:plant_care_app/features/plant_collection/data/services/gemini_service.dart';
 import 'package:plant_care_app/features/plant_collection/domain/entities/plant_model.dart';
 
-class PlantCollectionDetailScreen extends StatefulWidget {
+class PlantCollectionDetailScreen extends ConsumerStatefulWidget {
   final Plant plant;
 
   const PlantCollectionDetailScreen({super.key, required this.plant});
 
   @override
-  State<PlantCollectionDetailScreen> createState() =>
+  ConsumerState<PlantCollectionDetailScreen> createState() =>
       _PlantCollectionDetailScreenState();
 }
 
 class _PlantCollectionDetailScreenState
-    extends State<PlantCollectionDetailScreen> {
+    extends ConsumerState<PlantCollectionDetailScreen> {
+  bool _isLoadingAdvice = false;
+
+  Future<void> _showGeminiAdvice() async {
+    setState(() {
+      _isLoadingAdvice = true;
+    });
+
+    try {
+      final advice = await ref.read(geminiServiceProvider).getPlantCareAdvice(
+            plantName: widget.plant.name,
+            description: widget.plant.description,
+            isIndoor: widget.plant.isIndoor,
+          );
+
+      if (!mounted) return;
+
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => DraggableScrollableSheet(
+          initialChildSize: 0.7,
+          minChildSize: 0.5,
+          maxChildSize: 0.9,
+          builder: (context, scrollController) => Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).hintColor.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                Row(
+                  children: [
+                    Icon(Icons.auto_awesome, color: Theme.of(context).primaryColor),
+                    const SizedBox(width: 10),
+                    Text(
+                      "Gemini AI Care Guide",
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Expanded(
+                  child: SingleChildScrollView(
+                    controller: scrollController,
+                    child: Text(
+                      advice,
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            height: 1.6,
+                          ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to get advice: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingAdvice = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
@@ -171,6 +258,71 @@ class _PlantCollectionDetailScreenState
                               "18-25°C",
                             ), // Placeholder
                           ],
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // Gemini AI Button
+                        Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Theme.of(context).primaryColor.withOpacity(0.8),
+                                Theme.of(context).primaryColor,
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Theme.of(context).primaryColor.withOpacity(0.3),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: _isLoadingAdvice ? null : _showGeminiAdvice,
+                              borderRadius: BorderRadius.circular(20),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                  horizontal: 20,
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    if (_isLoadingAdvice)
+                                      SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    else ...[
+                                      const Icon(
+                                        Icons.auto_awesome,
+                                        color: Colors.white,
+                                      ),
+                                      const SizedBox(width: 10),
+                                      const Text(
+                                        "Ask Gemini for Care Guide",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
 
                         const SizedBox(height: 32),
