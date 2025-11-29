@@ -1,9 +1,13 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:plant_care_app/core/theme/colors.dart';
 import 'package:plant_care_app/features/plant_collection/data/services/gemini_service.dart';
+import 'package:plant_care_app/features/plant_collection/domain/entities/maintenance_log.dart';
 import 'package:plant_care_app/features/plant_collection/domain/entities/plant_model.dart';
+import 'package:plant_care_app/features/plant_collection/presentation/providers/maintenance_provider.dart';
 
 class PlantCollectionDetailScreen extends ConsumerStatefulWidget {
   final Plant plant;
@@ -18,6 +22,281 @@ class PlantCollectionDetailScreen extends ConsumerStatefulWidget {
 class _PlantCollectionDetailScreenState
     extends ConsumerState<PlantCollectionDetailScreen> {
   bool _isLoadingAdvice = false;
+
+  void _showMaintenanceDetails(MaintenanceType type) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.4,
+        maxChildSize: 0.9,
+        builder: (context, scrollController) => Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).hintColor.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    type == MaintenanceType.water ? "Watering History" : "Fertilizer History",
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  IconButton(
+                    onPressed: () => _showAddLogDialog(type),
+                    icon: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).primaryColor.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.add,
+                        color: Theme.of(context).primaryColor,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Expanded(
+                child: Consumer(
+                  builder: (context, ref, child) {
+                    final logsAsync = ref.watch(maintenanceLogsProvider(widget.plant.plantId));
+                    
+                    return logsAsync.when(
+                      data: (logs) {
+                        final typeLogs = logs.where((l) => l.type == type).toList();
+                        
+                        if (typeLogs.isEmpty) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  type == MaintenanceType.water ? Icons.water_drop_outlined : Icons.eco_outlined,
+                                  size: 64,
+                                  color: Theme.of(context).hintColor.withOpacity(0.3),
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  "No logs yet",
+                                  style: TextStyle(
+                                    color: Theme.of(context).hintColor,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () => _showAddLogDialog(type),
+                                  child: const Text("Add your first log"),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
+                        return ListView(
+                          controller: scrollController,
+                          children: [
+                            // Graph
+                            SizedBox(
+                              height: 200,
+                              child: _MaintenanceGraph(logs: typeLogs, type: type),
+                            ),
+                            const SizedBox(height: 32),
+                            const Text(
+                              "Recent Logs",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            // List of logs
+                            ...typeLogs.map((log) => ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: (type == MaintenanceType.water ? Colors.blue : Colors.green).withOpacity(0.1),
+                                child: Icon(
+                                  type == MaintenanceType.water ? Icons.water_drop : Icons.eco,
+                                  color: type == MaintenanceType.water ? Colors.blue : Colors.green,
+                                  size: 20,
+                                ),
+                              ),
+                              title: Text(
+                                DateFormat('MMM d, yyyy').format(log.date),
+                                style: const TextStyle(fontWeight: FontWeight.w500),
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    DateFormat('h:mm a').format(log.date),
+                                    style: TextStyle(color: Theme.of(context).hintColor),
+                                  ),
+                                  if (log.note != null && log.note!.isNotEmpty)
+                                    Text(
+                                      log.note!,
+                                      style: TextStyle(
+                                        color: Theme.of(context).textTheme.bodyMedium?.color,
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              isThreeLine: log.note != null && log.note!.isNotEmpty,
+                              trailing: Text(
+                                "${log.amount.toStringAsFixed(0)} ${type == MaintenanceType.water ? 'ml' : 'g'}",
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            )),
+                          ],
+                        );
+                      },
+                      loading: () => const Center(child: CircularProgressIndicator()),
+                      error: (err, stack) => Center(child: Text('Error: $err')),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showAddLogDialog(MaintenanceType type) async {
+    double amount = type == MaintenanceType.water ? 200.0 : 10.0; // Default values
+    final noteController = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            backgroundColor: Theme.of(context).cardColor,
+            title: Text(
+              'Log ${type == MaintenanceType.water ? 'Water' : 'Fertilizer'}',
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Amount: ${amount.toInt()} ${type == MaintenanceType.water ? 'ml' : 'g'}',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: type == MaintenanceType.water ? Colors.blue : Colors.green,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      activeTrackColor: type == MaintenanceType.water ? Colors.blue : Colors.green,
+                      inactiveTrackColor: (type == MaintenanceType.water ? Colors.blue : Colors.green).withOpacity(0.2),
+                      thumbColor: type == MaintenanceType.water ? Colors.blue : Colors.green,
+                      overlayColor: (type == MaintenanceType.water ? Colors.blue : Colors.green).withOpacity(0.2),
+                      valueIndicatorColor: type == MaintenanceType.water ? Colors.blue : Colors.green,
+                    ),
+                    child: Slider(
+                      value: amount,
+                      min: 0,
+                      max: type == MaintenanceType.water ? 1000.0 : 100.0,
+                      divisions: type == MaintenanceType.water ? 20 : 20,
+                      label: amount.round().toString(),
+                      onChanged: (value) {
+                        setState(() {
+                          amount = value;
+                        });
+                      },
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('0', style: Theme.of(context).textTheme.bodySmall),
+                        Text(
+                          type == MaintenanceType.water ? '1000ml' : '100g',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (type == MaintenanceType.fertilizer) ...[
+                    const SizedBox(height: 24),
+                    TextField(
+                      controller: noteController,
+                      decoration: InputDecoration(
+                        labelText: 'Fertilizer Name',
+                        hintText: 'e.g. NPK 20-20-20',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  'Cancel',
+                  style: TextStyle(color: Theme.of(context).hintColor),
+                ),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: type == MaintenanceType.water ? Colors.blue : Colors.green,
+                ),
+                onPressed: () async {
+                  Navigator.pop(context);
+                  await ref.read(maintenanceActionProvider).addLog(
+                        widget.plant.plantId,
+                        type,
+                        amount,
+                        note: noteController.text.isNotEmpty ? noteController.text : null,
+                      );
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('${type == MaintenanceType.water ? 'Water' : 'Fertilizer'} log added')),
+                    );
+                  }
+                },
+                child: const Text('Add'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
 
   Future<void> _showGeminiAdvice() async {
     setState(() {
@@ -333,21 +612,21 @@ class _PlantCollectionDetailScreenState
                         _buildMaintenanceCard(
                           context: context,
                           title: "Watering",
-                          subtitle: "Next: Tomorrow",
+                          subtitle: "Tap to view history",
                           icon: Icons.water_drop,
                           color: Colors.blue,
-                          onTap: () {},
+                          onTap: () => _showMaintenanceDetails(MaintenanceType.water),
                         ),
                         const SizedBox(height: 12),
-                        if (widget.plant.fertilizerInfo != null)
-                          _buildMaintenanceCard(
-                            context: context,
-                            title: "Fertilizer",
-                            subtitle: widget.plant.fertilizerInfo!,
-                            icon: Icons.eco,
-                            color: Colors.green,
-                            onTap: () {},
-                          ),
+                        // Always show fertilizer option, if info is null show generic subtitle
+                        _buildMaintenanceCard(
+                          context: context,
+                          title: "Fertilizer",
+                          subtitle: widget.plant.fertilizerInfo ?? "Tap to view history",
+                          icon: Icons.eco,
+                          color: Colors.green,
+                          onTap: () => _showMaintenanceDetails(MaintenanceType.fertilizer),
+                        ),
 
                         const SizedBox(height: 32),
 
@@ -749,6 +1028,93 @@ class _PlantCollectionDetailScreenState
             style: TextStyle(
               fontSize: 12,
               color: color ?? Theme.of(context).primaryColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MaintenanceGraph extends StatelessWidget {
+  final List<MaintenanceLog> logs;
+  final MaintenanceType type;
+
+  const _MaintenanceGraph({
+    required this.logs,
+    required this.type,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Filter logs for the last 30 days
+    final now = DateTime.now();
+    final recentLogs = logs.where((log) {
+      return log.date.isAfter(now.subtract(const Duration(days: 30)));
+    }).toList();
+    
+    // Sort by date
+    recentLogs.sort((a, b) => a.date.compareTo(b.date));
+
+    if (recentLogs.isEmpty) {
+      return const Center(child: Text("No data for the last 30 days"));
+    }
+
+    final color = type == MaintenanceType.water ? Colors.blue : Colors.green;
+
+    return LineChart(
+      LineChartData(
+        gridData: FlGridData(show: false),
+        titlesData: FlTitlesData(
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          topTitles: AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          rightTitles: AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              getTitlesWidget: (value, meta) {
+                final index = value.toInt();
+                if (index >= 0 && index < recentLogs.length) {
+                  // Show date for every 5th item or first/last to avoid overcrowding
+                  if (index == 0 || index == recentLogs.length - 1 || index % 5 == 0) {
+                    final date = recentLogs[index].date;
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: Text(
+                        DateFormat('MM/dd').format(date),
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    );
+                  }
+                }
+                return const SizedBox.shrink();
+              },
+            ),
+          ),
+        ),
+        borderData: FlBorderData(show: false),
+        lineBarsData: [
+          LineChartBarData(
+            spots: recentLogs.asMap().entries.map((entry) {
+              return FlSpot(entry.key.toDouble(), entry.value.amount);
+            }).toList(),
+            isCurved: true,
+            color: color,
+            barWidth: 3,
+            isStrokeCapRound: true,
+            dotData: FlDotData(show: true),
+            belowBarData: BarAreaData(
+              show: true,
+              color: color.withOpacity(0.1),
             ),
           ),
         ],
