@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 // Assuming LoginScreen is the next logical step after splash
 import 'package:plant_care_app/features/auth/presentation/screens/login_screen.dart';
@@ -26,8 +27,12 @@ class _SplashScreenState extends State<SplashScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.local_florist, color: Theme.of(context).primaryColor, size: 40), // Placeholder for leaf icon
-                  SizedBox(width: 8),
+                  SvgPicture.asset(
+                    'assets/images/logo.svg',
+                    height: 40,
+                    width: 40,
+                  ),
+                  const SizedBox(width: 8),
                   Text(
                     'Khodra',
                     style: TextStyle(

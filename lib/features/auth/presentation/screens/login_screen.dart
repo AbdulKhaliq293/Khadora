@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:plant_care_app/core/theme/colors.dart'; // Import colors
 import 'package:plant_care_app/features/auth/data/repositories/auth_repository.dart';
 import 'package:plant_care_app/features/home/presentation/screens/home_screen.dart';
@@ -59,7 +60,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.local_florist, color: Theme.of(context).primaryColor, size: 40),
+                  SvgPicture.asset(
+                    'assets/images/logo.svg',
+                    height: 40,
+                    width: 40,
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     'Khodra',
