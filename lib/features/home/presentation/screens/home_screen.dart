@@ -25,6 +25,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   // Change to ConsumerState
   String _selectedCategory = 'All'; // State for selected category
+  String _searchQuery = ''; // State for search query
 
   void _showProfileModal() {
     showModalBottomSheet(
@@ -148,6 +149,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
               // Search Bar
               TextField(
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value;
+                  });
+                },
                 decoration: InputDecoration(
                   hintText: 'Search here...',
                   hintStyle: TextStyle(
@@ -239,10 +245,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     plantsAsync.when(
                       data: (plants) {
                         final filteredPlants = plants.where((plant) {
-                          if (_selectedCategory == 'All') {
-                            return true;
-                          }
-                          return plant.category == _selectedCategory;
+                          final matchesCategory = _selectedCategory == 'All' ||
+                              plant.category == _selectedCategory;
+                          final matchesSearch = plant.name
+                              .toLowerCase()
+                              .contains(_searchQuery.toLowerCase());
+                          return matchesCategory && matchesSearch;
                         }).toList();
 
                         if (filteredPlants.isEmpty) {
