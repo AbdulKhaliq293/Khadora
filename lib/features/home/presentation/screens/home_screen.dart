@@ -14,6 +14,8 @@ import 'package:plant_care_app/features/home/data/services/recommendation_servic
 import 'package:plant_care_app/features/home/presentation/widgets/recommendation_card.dart';
 import 'package:plant_care_app/features/home/presentation/screens/recommendation_list_screen.dart';
 import 'package:plant_care_app/features/weather/presentation/widgets/forecast_widget.dart';
+import 'package:plant_care_app/features/settings/presentation/screens/notification_settings_screen.dart';
+import 'package:plant_care_app/core/services/notification_service.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   // Change to ConsumerStatefulWidget
@@ -27,6 +29,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   // Change to ConsumerState
   String _selectedCategory = 'All'; // State for selected category
   String _searchQuery = ''; // State for search query
+
+  @override
+  void initState() {
+    super.initState();
+    // Request notification permissions on home screen load
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(notificationServiceProvider).requestPermissions();
+    });
+  }
 
   void _showProfileModal() {
     showModalBottomSheet(
@@ -70,6 +81,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   },
                   activeColor: Theme.of(context).primaryColor,
                 ),
+              ),
+              // Notification Settings
+              ListTile(
+                leading: Icon(Icons.notifications, color: Theme.of(context).primaryColor),
+                title: const Text('Notifications'),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () {
+                  Navigator.pop(context); // Close modal
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const NotificationSettingsScreen(),
+                    ),
+                  );
+                },
               ),
               // Logout
               ListTile(

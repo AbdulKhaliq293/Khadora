@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
@@ -91,6 +92,53 @@ Include the following sections:
       return response.text ?? 'Unable to generate advice at this time.';
     } catch (e) {
       return 'Error generating advice: $e';
+    }
+  }
+
+  Future<Map<String, dynamic>> getPlantCareDetails({
+    required String plantName,
+    required String description,
+    required bool isIndoor,
+  }) async {
+    if (_apiKey.isEmpty || _apiKey == 'YOUR_GEMINI_API_KEY_HERE') {
+      return {};
+    }
+
+    // Prompt for structured JSON
+    final prompt = '''
+I have a plant named "$plantName".
+It is an ${isIndoor ? 'indoor' : 'outdoor'} plant.
+Description: $description
+
+Please provide the following care details in strict JSON format.
+Do NOT include any markdown formatting (like ```json ... ```). Just return the raw JSON string.
+
+{
+  "water_frequency_days": (int) recommended days between watering,
+  "fertilizer_frequency_days": (int) recommended days between fertilizing,
+  "fertilizer_type": (string) recommended fertilizer type (short),
+  "short_care_summary": (string) a concise (1-2 sentences) summary of when to water and what fertilizer to use. This will be sent as a notification to the user immediately.
+}
+''';
+
+    try {
+      final response = await _model.generateContent([Content.text(prompt)]);
+      final text = response.text;
+      if (text == null) return {};
+
+      // Clean up potential markdown code blocks just in case
+      final cleanText = text.replaceAll('```json', '').replaceAll('```', '').trim();
+      
+      try {
+        final jsonMap = json.decode(cleanText);
+        return jsonMap as Map<String, dynamic>;
+      } catch (e) {
+        print("Error parsing JSON from Gemini: $e");
+        return {};
+      }
+    } catch (e) {
+      print("Error generating care details: $e");
+      return {};
     }
   }
 }

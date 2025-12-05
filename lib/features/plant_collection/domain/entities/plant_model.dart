@@ -10,6 +10,14 @@ class Plant {
   final String origin;
   final String history;
   final String? fertilizerInfo; // Added for fertilizer management
+  
+  // Schedule & Notification
+  final int? waterFrequencyDays;
+  final int? fertilizerFrequencyDays;
+  final String? fertilizerType;
+  final DateTime? nextWaterDate;
+  final DateTime? nextFertilizeDate;
+
   final String? healthStatus; // Added for health status
   final List<String>? healthCheckHistory; // Added for history of health checks
   
@@ -43,6 +51,11 @@ class Plant {
     required this.origin,
     required this.history,
     this.fertilizerInfo,
+    this.waterFrequencyDays,
+    this.fertilizerFrequencyDays,
+    this.fertilizerType,
+    this.nextWaterDate,
+    this.nextFertilizeDate,
     this.healthStatus,
     this.healthCheckHistory,
     this.sunlight,

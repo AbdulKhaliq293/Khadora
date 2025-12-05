@@ -12,6 +12,7 @@ import 'package:plant_care_app/features/plant_collection/domain/entities/plant_m
 import 'package:plant_care_app/features/plant_collection/presentation/providers/maintenance_provider.dart';
 import 'package:plant_care_app/features/weather/data/services/weather_service.dart';
 import 'package:plant_care_app/features/weather/presentation/providers/weather_provider.dart';
+import 'package:plant_care_app/features/plant_identification/presentation/providers/plant_action_provider.dart';
 
 class PlantCollectionDetailScreen extends ConsumerStatefulWidget {
   final Plant plant;
@@ -26,6 +27,15 @@ class PlantCollectionDetailScreen extends ConsumerStatefulWidget {
 class _PlantCollectionDetailScreenState
     extends ConsumerState<PlantCollectionDetailScreen> {
   bool _isLoadingAdvice = false;
+
+  void _showNotifications() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _NotificationSheet(plant: widget.plant),
+    );
+  }
 
   void _showMaintenanceDetails(MaintenanceType type) {
     showModalBottomSheet(
@@ -394,7 +404,7 @@ class _PlantCollectionDetailScreenState
                 ),
                 _buildCircleButton(
                   icon: Icons.notifications_outlined,
-                  onTap: () {},
+                  onTap: _showNotifications,
                 ),
               ],
             ),
@@ -1310,6 +1320,230 @@ class _GeminiChatSheetState extends ConsumerState<_GeminiChatSheet> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _NotificationSheet extends ConsumerWidget {
+  final Plant plant;
+
+  const _NotificationSheet({required this.plant});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final logsAsync = ref.watch(maintenanceLogsProvider(plant.plantId));
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.5,
+      minChildSize: 0.4,
+      maxChildSize: 0.8,
+      builder: (context, scrollController) => Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).hintColor.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Text(
+              "Notifications",
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            const SizedBox(height: 20),
+            
+            // Upcoming
+            Text(
+              "Upcoming",
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).primaryColor,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildUpcomingTile(
+              context,
+              "Watering",
+              plant.nextWaterDate,
+              Icons.water_drop,
+              Colors.blue,
+            ),
+            const SizedBox(height: 8),
+            _buildUpcomingTile(
+              context,
+              "Fertilizing",
+              plant.nextFertilizeDate,
+              Icons.eco,
+              Colors.green,
+            ),
+
+            const SizedBox(height: 24),
+
+            // History (Previous)
+            Text(
+              "History",
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).hintColor,
+              ),
+            ),
+            const SizedBox(height: 12),
+            
+            Expanded(
+              child: logsAsync.when(
+                data: (logs) {
+                  if (logs.isEmpty) {
+                    return Center(
+                      child: Text(
+                        "No history yet",
+                        style: TextStyle(color: Theme.of(context).hintColor),
+                      ),
+                    );
+                  }
+                  // Sort logs by date descending
+                  final sortedLogs = List<MaintenanceLog>.from(logs)
+                    ..sort((a, b) => b.date.compareTo(a.date));
+
+                  return ListView.builder(
+                    controller: scrollController,
+                    itemCount: sortedLogs.length,
+                    itemBuilder: (context, index) {
+                      final log = sortedLogs[index];
+                      final isWater = log.type == MaintenanceType.water;
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: CircleAvatar(
+                          backgroundColor: (isWater ? Colors.blue : Colors.green).withOpacity(0.1),
+                          child: Icon(
+                            isWater ? Icons.water_drop : Icons.eco,
+                            color: isWater ? Colors.blue : Colors.green,
+                            size: 20,
+                          ),
+                        ),
+                        title: Text(
+                          isWater ? "Watered" : "Fertilized",
+                          style: const TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                        subtitle: Text(
+                          DateFormat('MMM d, h:mm a').format(log.date),
+                          style: TextStyle(color: Theme.of(context).hintColor, fontSize: 12),
+                        ),
+                        trailing: log.note != null && log.note!.isNotEmpty
+                            ? const Icon(Icons.note, size: 16, color: Colors.grey)
+                            : null,
+                      );
+                    },
+                  );
+                },
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, s) => Center(child: Text('Error: $e')),
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  try {
+                    await ref.read(plantActionProvider).scheduleBulkNotifications(plant, 4);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Notifications scheduled for next 4 months')),
+                      );
+                      Navigator.pop(context);
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error: $e')),
+                      );
+                    }
+                  }
+                },
+                icon: const Icon(Icons.schedule, color: Colors.white),
+                label: const Text(
+                  "Schedule Next 4 Months",
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).primaryColor,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUpcomingTile(
+    BuildContext context, 
+    String title, 
+    DateTime? date, 
+    IconData icon, 
+    Color color
+  ) {
+    if (date == null) return const SizedBox.shrink();
+
+    final now = DateTime.now();
+    // Reset times for correct day comparison
+    final today = DateTime(now.year, now.month, now.day);
+    final dueDay = DateTime(date.year, date.month, date.day);
+    final diff = dueDay.difference(today).inDays;
+
+    String dueText;
+    Color dueColor = Theme.of(context).textTheme.bodyMedium?.color ?? Colors.black;
+
+    if (diff < 0) {
+      dueText = "Overdue by ${diff.abs()} days";
+      dueColor = Colors.red;
+    } else if (diff == 0) {
+      dueText = "Today";
+      dueColor = Colors.orange;
+    } else if (diff == 1) {
+      dueText = "Tomorrow";
+    } else {
+      dueText = "In $diff days (${DateFormat('MMM d').format(date)})";
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.1)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text(
+                dueText,
+                style: TextStyle(color: dueColor, fontSize: 12),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
