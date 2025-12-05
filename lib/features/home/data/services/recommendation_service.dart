@@ -49,9 +49,8 @@ class RecommendationService {
       
       final allDocs = snapshot.docs.toList();
       allDocs.shuffle();
-      final selectedDocs = allDocs.take(3).toList();
       
-      return selectedDocs.map((doc) => RecommendationPlant.fromMap(doc.data(), doc.id)).toList();
+      return allDocs.map((doc) => RecommendationPlant.fromMap(doc.data(), doc.id)).toList();
     } catch (e) {
       print('Error fetching recommendations: $e');
       return [];

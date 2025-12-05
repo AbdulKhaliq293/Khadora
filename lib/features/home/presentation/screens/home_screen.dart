@@ -12,6 +12,7 @@ import 'package:plant_care_app/features/plant_identification/presentation/provid
 import 'package:plant_care_app/features/plant_identification/presentation/screens/add_plant_screen.dart'; // Import AddPlantScreen
 import 'package:plant_care_app/features/home/data/services/recommendation_service.dart';
 import 'package:plant_care_app/features/home/presentation/widgets/recommendation_card.dart';
+import 'package:plant_care_app/features/home/presentation/screens/recommendation_list_screen.dart';
 import 'package:plant_care_app/features/weather/presentation/widgets/forecast_widget.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -193,19 +194,38 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             ? Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text(
-                                    'Top Recommendations',
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const Text(
+                                        'Top Recommendations',
+                                        style: TextStyle(
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      IconButton(
+                                        icon: Icon(
+                                          Icons.arrow_forward,
+                                          color: Theme.of(context).primaryColor,
+                                        ),
+                                        onPressed: () {
+                                          Navigator.of(context).push(
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  const RecommendationListScreen(),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ],
                                   ),
                                   const SizedBox(height: 10),
                                   SizedBox(
                                     height: 300,
                                     child: ListView.builder(
                                       scrollDirection: Axis.horizontal,
-                                      itemCount: plants.length,
+                                      itemCount: plants.length > 3 ? 3 : plants.length,
                                       itemBuilder: (context, index) {
                                         return RecommendationCard(plant: plants[index]);
                                       },
