@@ -13,6 +13,7 @@ import 'package:plant_care_app/features/plant_collection/presentation/providers/
 import 'package:plant_care_app/features/weather/data/services/weather_service.dart';
 import 'package:plant_care_app/features/weather/presentation/providers/weather_provider.dart';
 import 'package:plant_care_app/features/plant_identification/presentation/providers/plant_action_provider.dart';
+import 'package:plant_care_app/features/plant_collection/presentation/providers/plant_collection_provider.dart';
 
 class PlantCollectionDetailScreen extends ConsumerStatefulWidget {
   final Plant plant;
@@ -29,11 +30,17 @@ class _PlantCollectionDetailScreenState
   bool _isLoadingAdvice = false;
 
   void _showNotifications() {
+    final plantsAsync = ref.read(plantCollectionProvider);
+    final Plant plant = plantsAsync.value?.firstWhere(
+      (p) => p.plantId == widget.plant.plantId,
+      orElse: () => widget.plant,
+    ) ?? widget.plant;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _NotificationSheet(plant: widget.plant),
+      builder: (context) => _NotificationSheet(plant: plant),
     );
   }
 
@@ -348,6 +355,12 @@ class _PlantCollectionDetailScreenState
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
+    final plantsAsync = ref.watch(plantCollectionProvider);
+    
+    final Plant plant = plantsAsync.value?.firstWhere(
+      (p) => p.plantId == widget.plant.plantId,
+      orElse: () => widget.plant,
+    ) ?? widget.plant;
 
     return Scaffold(
       body: Stack(
@@ -355,7 +368,7 @@ class _PlantCollectionDetailScreenState
           // 1. Background Image (Full Screen)
           Positioned.fill(
             child: Image.network(
-              widget.plant.imageUrl,
+              plant.imageUrl,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) => Container(
                 color: Theme.of(context).scaffoldBackgroundColor,
@@ -461,7 +474,7 @@ class _PlantCollectionDetailScreenState
 
                         // Header
                         Text(
-                          widget.plant.name,
+                          plant.name,
                           style: Theme.of(context).textTheme.headlineLarge
                               ?.copyWith(
                                 height: 1.1,
@@ -469,7 +482,7 @@ class _PlantCollectionDetailScreenState
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          widget.plant.isIndoor
+                          plant.isIndoor
                               ? "Indoor Plant"
                               : "Outdoor Plant",
                           style: Theme.of(context).textTheme.bodyLarge
@@ -488,7 +501,7 @@ class _PlantCollectionDetailScreenState
                             _buildStatBadge(
                               Icons.water_drop_outlined,
                               "Water",
-                              widget.plant.timeToWater,
+                              plant.timeToWater,
                             ),
                             _buildStatBadge(
                               Icons.wb_sunny_outlined,
@@ -586,7 +599,7 @@ class _PlantCollectionDetailScreenState
                         _buildMaintenanceCard(
                           context: context,
                           title: "Fertilizer",
-                          subtitle: widget.plant.fertilizerInfo ?? "Tap to view history",
+                          subtitle: plant.fertilizerInfo ?? "Tap to view history",
                           icon: Icons.eco,
                           color: Colors.green,
                           onTap: () => _showMaintenanceDetails(MaintenanceType.fertilizer),
@@ -598,7 +611,7 @@ class _PlantCollectionDetailScreenState
                         _buildSectionHeader("About"),
                         const SizedBox(height: 12),
                         Text(
-                          widget.plant.description,
+                          plant.description,
                           style: const TextStyle(
                             color: Colors.black87,
                             height: 1.6,
@@ -613,13 +626,13 @@ class _PlantCollectionDetailScreenState
                         _buildInfoRow(
                           Icons.public,
                           "Origin",
-                          widget.plant.origin,
+                          plant.origin,
                         ),
                         const SizedBox(height: 12),
                         _buildInfoRow(
                           Icons.history,
                           "History",
-                          widget.plant.history,
+                          plant.history,
                         ),
 
                         const SizedBox(height: 32),
@@ -631,23 +644,23 @@ class _PlantCollectionDetailScreenState
                           spacing: 8,
                           runSpacing: 8,
                           children: [
-                            if (widget.plant.type != null) _buildAttributeChip("Type", widget.plant.type!),
-                            if (widget.plant.cycle != null) _buildAttributeChip("Cycle", widget.plant.cycle!),
-                            if (widget.plant.growthRate != null) _buildAttributeChip("Growth", widget.plant.growthRate!),
-                            if (widget.plant.hardiness != null) _buildAttributeChip("Hardiness", widget.plant.hardiness!),
-                            if (widget.plant.poisonousToHumans == true) _buildAttributeChip("Poisonous (Humans)", "Yes", color: Colors.red),
-                            if (widget.plant.poisonousToPets == true) _buildAttributeChip("Poisonous (Pets)", "Yes", color: Colors.red),
-                            if (widget.plant.droughtTolerant == true) _buildAttributeChip("Drought Tolerant", "Yes", color: Colors.green),
-                            if (widget.plant.invasive == true) _buildAttributeChip("Invasive", "Yes", color: Colors.orange),
+                            if (plant.type != null) _buildAttributeChip("Type", plant.type!),
+                            if (plant.cycle != null) _buildAttributeChip("Cycle", plant.cycle!),
+                            if (plant.growthRate != null) _buildAttributeChip("Growth", plant.growthRate!),
+                            if (plant.hardiness != null) _buildAttributeChip("Hardiness", plant.hardiness!),
+                            if (plant.poisonousToHumans == true) _buildAttributeChip("Poisonous (Humans)", "Yes", color: Colors.red),
+                            if (plant.poisonousToPets == true) _buildAttributeChip("Poisonous (Pets)", "Yes", color: Colors.red),
+                            if (plant.droughtTolerant == true) _buildAttributeChip("Drought Tolerant", "Yes", color: Colors.green),
+                            if (plant.invasive == true) _buildAttributeChip("Invasive", "Yes", color: Colors.orange),
                           ],
                         ),
 
-                        if (widget.plant.careInstructions != null) ...[
+                        if (plant.careInstructions != null) ...[
                           const SizedBox(height: 32),
                           _buildSectionHeader("Care Instructions"),
                           const SizedBox(height: 12),
                           Text(
-                            widget.plant.careInstructions!,
+                            plant.careInstructions!,
                             style: const TextStyle(
                               color: Colors.black87,
                               height: 1.6,
@@ -656,25 +669,25 @@ class _PlantCollectionDetailScreenState
                           ),
                         ],
                         
-                        if (widget.plant.pruning != null) ...[
+                        if (plant.pruning != null) ...[
                           const SizedBox(height: 32),
                           _buildSectionHeader("Pruning"),
                           const SizedBox(height: 12),
                            _buildInfoRow(
                             Icons.cut,
                             "Best time to prune",
-                            widget.plant.pruning!,
+                            plant.pruning!,
                           ),
                         ],
                         
-                        if (widget.plant.sunlight != null) ...[
+                        if (plant.sunlight != null) ...[
                           const SizedBox(height: 32),
                           _buildSectionHeader("Sunlight"),
                           const SizedBox(height: 12),
                            _buildInfoRow(
                             Icons.wb_sunny,
                             "Requirement",
-                            widget.plant.sunlight!,
+                            plant.sunlight!,
                           ),
                         ],
 
