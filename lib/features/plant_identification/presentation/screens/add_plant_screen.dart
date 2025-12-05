@@ -358,14 +358,7 @@ class _AddPlantScreenState extends ConsumerState<AddPlantScreen>
               style: TextStyle(color: white, fontWeight: FontWeight.bold),
             ),
           ),
-          const SizedBox(width: 16),
-           Padding(
-            padding: const EdgeInsets.only(right: 24.0),
-            child: Text(
-              'History', // Changed from Multiple to History as it makes more sense
-              style: const TextStyle(color: white, fontWeight: FontWeight.w500),
-            ),
-          ),
+          
         ],
       ),
     );

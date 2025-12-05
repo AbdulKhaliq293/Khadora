@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:async';
 
 // Assuming LoginScreen is the next logical step after splash
 import 'package:plant_care_app/features/auth/presentation/screens/login_screen.dart';
@@ -14,20 +13,6 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  @override
-  void initState() {
-    super.initState();
-    // Timer to navigate to the next screen after a delay
-    Timer(
-      const Duration(seconds: 3), // Adjust duration as needed
-      () => Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (BuildContext context) => const LoginScreen(), // Or HomeScreen if appropriate
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -44,7 +29,7 @@ class _SplashScreenState extends State<SplashScreen> {
                   Icon(Icons.local_florist, color: Theme.of(context).primaryColor, size: 40), // Placeholder for leaf icon
                   SizedBox(width: 8),
                   Text(
-                    'PlantPulse',
+                    'Khodra',
                     style: TextStyle(
                       fontSize: 40,
                       fontWeight: FontWeight.bold,
