@@ -122,6 +122,101 @@ class _AddPlantScreenState extends ConsumerState<AddPlantScreen>
         .identifyPlant(imageFile);
   }
 
+  void _showTips() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Photography Tips',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).textTheme.bodyLarge?.color,
+              ),
+            ),
+            const SizedBox(height: 20),
+            _buildTipItem(Icons.wb_sunny_outlined, 'Good Lighting',
+                'Ensure the plant is well-lit, but avoid direct glare.'),
+            _buildTipItem(Icons.center_focus_strong_outlined, 'Clear Focus',
+                'Tap to focus on the main leaves or flowers.'),
+            _buildTipItem(Icons.filter_center_focus_outlined, 'One Plant',
+                'Try to keep only one species in the frame.'),
+            _buildTipItem(Icons.back_hand_outlined, 'Steady Hands',
+                'Keep the camera steady for a sharp image.'),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).primaryColor,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text('Got it!',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTipItem(IconData icon, String title, String description) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Theme.of(context).primaryColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: Theme.of(context).primaryColor, size: 24),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Theme.of(context).textTheme.bodyLarge?.color,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  description,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Theme.of(context).hintColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final plantState = ref.watch(plantIdentificationNotifierProvider);
@@ -399,7 +494,10 @@ class _AddPlantScreenState extends ConsumerState<AddPlantScreen>
               ),
             ),
           ),
-          _buildControlButton(Icons.info_outline, 'Tips'),
+          GestureDetector(
+            onTap: _showTips,
+            child: _buildControlButton(Icons.info_outline, 'Tips'),
+          ),
         ],
       ),
     );
